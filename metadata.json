@@ -1,0 +1,6 @@
+{
+  "name": "Meniscus Liquid Navigation",
+  "description": "A fluid bottom navigation bar with spring physics and reactive glowing effects.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

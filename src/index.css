@@ -1,0 +1,206 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: dark;
+
+  /* the room — deep plum, so the bar reads as a lit white plate on it */
+  --page:      #1c1526;
+  --page-hi:   #2b2138;
+  --page-lo:   #110c18;
+
+  /* the bar — an obsidian plate, deliberately deeper than the room behind it
+     (the room reads ~#231c2f here) so the socket has a silhouette to cut. */
+  --bar:       #130f1e;          
+  --bar-hi:    #1b1529;
+  --bar-lo:    #0c0814;
+
+  --icon-off:  #a79eb8;          /* inactive icon on the plate — 7.1:1 */
+  --icon-on:   #1a1420;          /* active icon, sitting on the bead */
+
+  /* type on the room */
+  --text-hi:   #f6f2f8;
+  --text-soft: #bcb3ca;
+  --text-faint:#a8a0b8;
+
+  /* live accent — JS lerps these channels between tab accents as the bead
+     travels, and every layer picks its own alpha from them. */
+  --glow-rgb:  0 229 255;
+  --glow:      rgb(var(--glow-rgb));
+
+  /* geometry — JS is the source of truth and overwrites all four */
+  --dock-r:    18px;
+  --bead-d:    56px;
+  --bead-cy:   0px;
+  --rise:      42px;
+
+  --font-display: 'Bricolage Grotesque', ui-sans-serif, system-ui, sans-serif;
+  --font-ui: 'Instrument Sans', ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --ease: cubic-bezier(.22, .61, .28, 1);
+}
+
+body {
+  font-family: var(--font-ui);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  background: var(--page);
+}
+
+/* --- ambient ------------------------------------------------------------ */
+
+.bloom {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(38% 27% at 50% 68%, rgb(var(--glow-rgb) / .20), transparent 74%),
+    radial-gradient(88% 52% at 50% 4%, #342846, transparent 76%),
+    linear-gradient(180deg, var(--page-hi), var(--page-lo));
+}
+
+.grain {
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 1;
+  opacity: .16;
+  background-image: url('https://grainy-gradients.vercel.app/noise.svg');
+  background-size: 180px;
+  mix-blend-mode: overlay;
+}
+
+/* ==========================================================================
+   The dock
+   ========================================================================== */
+
+.dock {
+  position: relative;
+  width: min(460px, 100%);
+  height: clamp(72px, 10vh, 84px);
+  flex: none;
+  touch-action: pan-y;                /* vertical scroll stays the page's */
+  -webkit-tap-highlight-color: transparent;
+  background: transparent;
+}
+
+/* A soft ground shadow. It lives entirely under the bar's lower half, so
+   the socket can never expose it. */
+.dock__cast {
+  position: absolute;
+  inset: 46% 7% 6% 7%;
+  border-radius: 999px;
+  background: var(--bar);
+  box-shadow:
+    0 10px 22px -8px rgba(0, 0, 0, .74),
+    0 32px 56px -20px rgba(0, 0, 0, .8);
+}
+
+.dock__skin {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .5));
+}
+
+.dock__fill {
+  fill: url(#mnPlate);
+  stroke: url(#mnRim);
+  stroke-width: 1;
+}
+.dock__plate-hi { stop-color: var(--bar-hi); }
+.dock__plate-lo { stop-color: var(--bar-lo); }
+.dock__rim-hi { stop-color: #fff; stop-opacity: .60; }
+.dock__rim-lo { stop-color: #fff; stop-opacity: .06; }
+
+/* --- the bead ----------------------------------------------------------- */
+
+.dock__bead {
+  position: absolute;
+  top: var(--bead-cy);
+  left: 0;
+  width: var(--bead-d);
+  height: var(--bead-d);
+  margin: calc(var(--bead-d) / -2) 0 0 calc(var(--bead-d) / -2);
+  border-radius: 50%;
+  background:
+    linear-gradient(168deg, color-mix(in srgb, var(--glow) 76%, #fff), var(--glow) 62%);
+  box-shadow:
+    0 0 0 1px rgb(var(--glow-rgb) / .5),
+    0 0 26px 2px rgb(var(--glow-rgb) / .32),
+    0 10px 18px -7px rgba(0, 0, 0, .68),
+    inset 0 0 0 1px rgba(255, 255, 255, .42),
+    inset 0 -3px 6px -3px rgba(26, 16, 34, .18);
+  will-change: transform;
+  pointer-events: none;
+}
+.dock:not(.is-ready) .dock__bead { opacity: 0; }
+
+/* --- tabs --------------------------------------------------------------- */
+
+.dock__tabs {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  padding-inline: clamp(26px, 10.5%, 54px);
+}
+
+.tab {
+  position: relative;
+  flex: 1;
+  display: block;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 14px;
+  --t: 0;                            /* 0 = at rest · 1 = inside the bead */
+  --acc: var(--glow);
+}
+
+.tab:focus-visible {
+  outline: 2px solid var(--acc);
+  outline-offset: -3px;
+}
+
+.tab__icon {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 25px;
+  height: 25px;
+  color: color-mix(in oklab, var(--icon-off) calc((1 - var(--t)) * 100%), var(--icon-on));
+  transform: translate(-50%, -50%) translateY(calc(var(--t) * var(--rise) * -1));
+  will-change: transform;
+}
+
+.tab__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 14%;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .06em;
+  color: var(--acc);
+  opacity: 0;
+  transform: translateY(calc((1 - var(--t)) * 7px));
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+.tab[aria-selected="true"] .tab__label,
+.dock.is-dragging .tab__label { opacity: var(--t); }
+
+@media (max-width: 400px) {
+  .tab__icon { width: 23px; height: 23px; }
+  .tab__label { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
+}
